@@ -8,10 +8,7 @@ import (
 
 func main() {
 	skus := scraper.ExtractPaintSKUs(".inputs/amsterdam72.html")
-	d, err := downloader.New(".outputs")
-	if err != nil {
-		return
-	}
+	d := downloader.New(".outputs")
 
 	for _, sku := range skus {
 		d.SaveImage(sku.ColorSwatchURL, sku.Slug+".jpg")

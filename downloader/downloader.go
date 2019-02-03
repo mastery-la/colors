@@ -13,7 +13,7 @@ type Downloader struct {
 }
 
 // New creates a new instance of Downloader
-func New(outputFolder string) (*Downloader, error) {
+func New(outputFolder string) *Downloader {
 	p := new(Downloader)
 
 	newpath := filepath.Join(".", outputFolder)
@@ -21,7 +21,7 @@ func New(outputFolder string) (*Downloader, error) {
 
 	p.OutputFolder = newpath
 
-	return p, nil
+	return p
 }
 
 // SaveImage downloads the image from the given URL and saves to file

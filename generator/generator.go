@@ -28,7 +28,7 @@ type Color struct {
 	Name  string
 }
 
-func GenerateColorPalette(skus []scraper.PaintSKU, directory string) {
+func GenerateColorPalette(skus []scraper.PaintSKU, directory string) []Color {
 	var hexString string
 	var err error
 
