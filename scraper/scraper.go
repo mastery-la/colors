@@ -1,21 +1,71 @@
 package scraper
 
-import "github.com/schollz/pluck/pluck"
+import (
+	"sort"
+
+	"github.com/schollz/pluck/pluck"
+)
 
 // PaintSKU holds information about a unique SKU of paint
 // PaintSKUs include the form-factor that the paint is being sold.
 // The same color may have multiple SKUs for different sizes of paint tubes.
 type PaintSKU struct {
-	ItemNumber     string
-	ProductURL     string
-	ColorNumber    string
 	ColorName      string
+	ProductURL     string
 	ColorSwatchURL string
 }
 
-// SKUFromProductLink returns a PaintSKU that it extracts from the product
-// at the specified link. Assumes that url is a dickblick.com paint product.
-func SKUFromProductLink(url string) PaintSKU {
+// ExtractPaintSKUs takes a path to an html file from dickblick.com and returns
+// an array of PaintSKUs that were extracted by crawling the product links.
+func ExtractPaintSKUs(fromFile string) []PaintSKU {
+	urls := extractProductURLs(fromFile)
+	skus := skusFromProductLinks(urls)
+	skus = removeDuplicates(skus)
+	skus = sortAlpha(skus)
+
+	return skus
+}
+
+func extractProductURLs(fromFile string) []string {
+	p, _ := pluck.New()
+
+	p.Add(pluck.Config{
+		Activators:  []string{"<", `class="itemskulink"`, "href", `"`},
+		Deactivator: `"`,
+		Limit:       -1,
+	})
+
+	p.PluckFile(fromFile)
+
+	result := p.Result()
+	paths := result["0"].([]string)
+
+	baseURL := "https://www.dickblick.com"
+
+	urls := mapOverSlice(paths, func(path string) string {
+		return baseURL + path
+	})
+
+	return urls
+
+}
+
+func skusFromProductLinks(urls []string) []PaintSKU {
+	c := make(chan PaintSKU, 100)
+	var skus []PaintSKU
+
+	for _, url := range urls {
+		go fetchSKU(c, url)
+	}
+
+	for range urls {
+		skus = append(skus, <-c)
+	}
+
+	return skus
+}
+
+func fetchSKU(skus chan<- PaintSKU, url string) {
 	p, _ := pluck.New()
 
 	// Extract Color Name
@@ -32,48 +82,53 @@ func SKUFromProductLink(url string) PaintSKU {
 		Limit:       -1,
 	})
 
-	p.PluckURL(url)
-	result := p.Result()
-
-	return PaintSKU{
-		ItemNumber:     "12312",
-		ProductURL:     url,
-		ColorNumber:    "string",
-		ColorName:      result["0"].(string),
-		ColorSwatchURL: result["1"].(string),
-	}
-}
-
-// ExtractProductLinks Given a path to an html file extracted from dickblick.com,
-// returns an array of URLs to the products.
-func ExtractProductLinks(fromFile string) []string {
-	p, _ := pluck.New()
-
+	// Extract Color Number
 	p.Add(pluck.Config{
-		Activators:  []string{"<", `class="itemskulink"`, "href", `"`},
-		Deactivator: `"`,
+		Activators:  []string{"<", "td", `class="skuelement skuNo."`, ">"},
+		Deactivator: `</td>`,
 		Limit:       -1,
 	})
 
-	p.PluckFile(fromFile)
-
+	p.PluckURL(url)
 	result := p.Result()
-	paths := result["0"].([]string)
 
-	baseURL := "https://www.dickblick.com"
+	skus <- PaintSKU{
+		ColorName:      result["0"].(string),
+		ProductURL:     url,
+		ColorSwatchURL: result["1"].(string),
+	}
 
-	urls := Map(paths, func(path string) string {
-		return baseURL + path
-	})
-
-	return urls
 }
 
-// Map over a slice of strings, modifying each string with the provided function.
-func Map(vs []string, f func(string) string) []string {
-	vsm := make([]string, len(vs))
-	for i, v := range vs {
-		vsm[i] = f(v)
+func mapOverSlice(strings []string, f func(string) string) []string {
+	mapped := make([]string, len(strings))
+	for i, v := range strings {
+		mapped[i] = f(v)
 	}
-	return vsm
+	return mapped
+}
+
+func removeDuplicates(skus []PaintSKU) []PaintSKU {
+	visitors := make(map[string]struct{}, len(skus))
+	count := 0
+	for _, v := range skus {
+		if _, visited := visitors[v.ColorName]; visited {
+			continue
+		}
+		visitors[v.ColorName] = struct{}{}
+		skus[count] = v
+		count++
+	}
+	return skus[:count]
+}
+
+func sortAlpha(skus []PaintSKU) []PaintSKU {
+	sorted := make([]PaintSKU, len(skus))
+	copy(sorted, skus)
+
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].ColorName < sorted[j].ColorName
+	})
+
+	return sorted
 }

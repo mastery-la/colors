@@ -2,17 +2,24 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/mastery-la/colors/downloader"
 	"github.com/mastery-la/colors/scraper"
 )
 
 func main() {
-	urls := scraper.ExtractProductLinks("inputs/amsterdam72.html")
-
-	for idx, url := range urls {
-		fmt.Println(idx+1, url)
-		sku := scraper.SKUFromProductLink(url)
-
-		fmt.Println(sku.ColorName)
+	skus := scraper.ExtractPaintSKUs("inputs/amsterdam72.html")
+	_, err := downloader.New("outputs")
+	if err != nil {
+		return
 	}
+
+	for _, sku := range skus {
+		fmt.Println(sku.ColorName)
+		fmt.Println(strings.Replace(sku.ColorName, " ", "", -1) + ".jpg")
+		fmt.Println(sku.ColorSwatchURL)
+		fmt.Print("\n")
+	}
+
 }
