@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 
-	"scraper"
+	"github.com/mastery-la/colors/scraper"
 )
 
 func main() {
-	urls := scraper.ExtractProductLinks("amsterdam72.html")
+	urls := scraper.ExtractProductLinks("inputs/amsterdam72.html")
 
 	for idx, url := range urls {
 		fmt.Println(idx+1, url)
