@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/schollz/pluck/pluck"
 )
@@ -11,6 +12,7 @@ import (
 // The same color may have multiple SKUs for different sizes of paint tubes.
 type PaintSKU struct {
 	ColorName      string
+	Slug           string
 	ProductURL     string
 	ColorSwatchURL string
 }
@@ -92,12 +94,16 @@ func fetchSKU(skus chan<- PaintSKU, url string) {
 	p.PluckURL(url)
 	result := p.Result()
 
-	skus <- PaintSKU{
-		ColorName:      result["0"].(string),
-		ProductURL:     url,
-		ColorSwatchURL: result["1"].(string),
-	}
+	name := result["0"].(string)
+	swatch := result["1"].(string)
+	slug := strings.ToLower(strings.Replace(name, " ", "-", -1))
 
+	skus <- PaintSKU{
+		ColorName:      name,
+		Slug:           slug,
+		ProductURL:     url,
+		ColorSwatchURL: swatch,
+	}
 }
 
 func mapOverSlice(strings []string, f func(string) string) []string {
