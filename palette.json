@@ -1,0 +1,17 @@
+{
+  "name": "Amsterdam Standard Series Acrylics",
+  "type": "acrylic",
+  "brand": "Amsterdam",
+  "paints": [
+    {
+      "name": "Manganese Blue Phthalo",
+      "swatchURL": "/colors/amsterdam/manganese-blue-phthalo/swatch.jpg",
+      "colors": [
+        {
+          "hex": "#ffffff",
+          "swatchURL": null
+        }
+      ]
+    }
+  ]
+}

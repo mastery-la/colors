@@ -1,130 +1,104 @@
 package generator
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"html/template"
 	"image"
 	"image/color"
 	"image/draw"
 	"image/jpeg"
 	"image/png"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/go-playground/colors"
-	colorful "github.com/lucasb-eyer/go-colorful"
+	"github.com/mastery-la/colors/downloader"
 	"github.com/mastery-la/colors/scraper"
 	"github.com/oliamb/cutter"
 )
 
-type Color struct {
-	Hexes []string
-	Path  template.HTMLAttr
-	Name  string
+type Generator struct {
+	Scraper    *scraper.Scraper
+	Downloader *downloader.Downloader
+	Result     Palette
 }
 
-func GenerateColorPalette(skus []scraper.PaintSKU, directory string) []Color {
+type Palette struct {
+	Name      string
+	PaintType string
+	Brand     string
+	Paints    []Paint
+}
+
+type Paint struct {
+	Name      string
+	Slug      string
+	SwatchURL string
+	Colors    []Color
+}
+
+type Color struct {
+	Hex       string
+	SwatchURL string
+}
+
+func New(scraper *scraper.Scraper, downloader *downloader.Downloader) *Generator {
+	g := new(Generator)
+
+	g.Scraper = scraper
+	g.Downloader = downloader
+
+	return g
+}
+
+func (g *Generator) Generate() {
+	p := new(Palette)
+
+	p.Name = g.Scraper.Name
+	p.PaintType = g.Scraper.PaintType
+	p.Brand = g.Scraper.Brand
+
+	paints := generatePaints(g.Scraper.Results, g.Downloader.OutputFolder)
+	p.Paints = paints
+
+	g.Result = *p
+}
+
+func generatePaints(skus []scraper.PaintSKU, directory string) []Paint {
 	var hexString string
 	var err error
+	var paints []Paint
 
 	for _, sku := range skus {
-		path := filepath.Join(".", directory, sku.Slug+".jpg")
+		var paint Paint
+		primaryPath := filepath.Join(".", directory, sku.Slug+".jpg")
 
+		paint.Name = sku.ColorName
+		paint.Slug = sku.Slug
+		paint.SwatchURL = primaryPath
+
+		var colors []Color
 		for i := range []int{0, 1, 2} {
-			hexString, err = crop(path, fmt.Sprintf("%s.%d.png", path, i), image.Point{(i * 100) + 10, 0})
+			swatchPath := fmt.Sprintf("%s.%d.png", primaryPath, i+1)
+
+			hexString, err = crop(primaryPath, swatchPath, image.Point{(i * 100) + 10, 0})
 			if err != nil {
 				log.Fatal(err)
 			}
-			fmt.Println("color", hexString)
-		}
 
-	}
-}
-
-func extract(fromFolder string) {
-	glob := filepath.Join(fromFolder, "*.jpg")
-	jpgFiles, err := filepath.Glob(glob)
-	if err != nil {
-		log.Fatal(err)
-	}
-	colorMap := make(map[string]string)
-	colors := []Color{}
-	for i, inPath := range jpgFiles {
-		fmt.Println(i, inPath)
-		colorName := strings.Split(inPath, "_")[1]
-		color := Color{Name: colorName, Path: template.HTMLAttr(filepath.ToSlash(inPath)), Hexes: []string{"", "", "", "", ""}}
-		var hexString string
-		hexString, err = crop(inPath, inPath+".1.png", image.Point{0, 0})
-		if err != nil {
-			log.Fatal(err)
-		}
-		colorMap[colorName+"0"] = hexString
-		color.Hexes[0] = hexString
-		hexString, err = crop(inPath, inPath+".2.png", image.Point{0, 0})
-		if err != nil {
-			log.Fatal(err)
-		}
-		colorMap[colorName+"1"] = hexString
-		color.Hexes[1] = hexString
-		hexString, err = crop(inPath, inPath+".3.png", image.Point{0, 0})
-		if err != nil {
-			log.Fatal(err)
-		}
-		colorMap[colorName+"2"] = hexString
-		color.Hexes[2] = hexString
-		c1, _ := colorful.Hex("#ffffff")
-		c2, _ := colorful.Hex(hexString)
-		c3 := c1.BlendRgb(c2, 0.5)
-		color.Hexes[3] = c3.Hex()
-
-		c3 = c1.BlendRgb(c3, 0.5)
-		color.Hexes[4] = c3.Hex()
-		colors = append(colors, color)
-	}
-
-	colorMapBytes, err := json.MarshalIndent(colorMap, "", " ")
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = ioutil.WriteFile("blick.json", colorMapBytes, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var tpl bytes.Buffer
-	t := template.Must(template.New("main").Parse(html))
-	err = t.Execute(&tpl, colors)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = ioutil.WriteFile("index.html", tpl.Bytes(), 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	palette := ""
-	for _, color := range colors {
-		for i, hex := range color.Hexes {
-			name := ""
-			if i == 0 {
-				name = "Heavy"
-			} else if i >= 2 {
-				name = fmt.Sprintf("Light%d", i)
+			color := Color{
+				Hex:       hexString,
+				SwatchURL: swatchPath,
 			}
-			palette += fmt.Sprintf("%s%s\t\t%s\n", color.Name, name, hex)
+
+			colors = append(colors, color)
 		}
-	}
-	palette = strings.TrimSpace(palette)
-	err = ioutil.WriteFile("palette.txt", []byte(palette), 0644)
-	if err != nil {
-		log.Fatal(err)
+
+		paint.Colors = colors
+		paints = append(paints, paint)
 	}
 
+	return paints
 }
 
 func crop(inPath string, outPath string, tlPoint image.Point) (hexString string, err error) {
@@ -156,7 +130,7 @@ func crop(inPath string, outPath string, tlPoint image.Point) (hexString string,
 	defer fo.Close()
 
 	err = png.Encode(fo, cImg)
-	cnrgba, err := AverageImageColor(outPath)
+	cnrgba, err := averageColorFromImage(outPath)
 	rgb, err := colors.RGB(cnrgba.R, cnrgba.G, cnrgba.B)
 	if err != nil {
 		return
@@ -165,8 +139,8 @@ func crop(inPath string, outPath string, tlPoint image.Point) (hexString string,
 	return
 }
 
-func AverageImageColor(inPath string) (cnrgba color.NRGBA, err error) {
-	fi, err := os.Open(inPath)
+func averageColorFromImage(url string) (cnrgba color.NRGBA, err error) {
+	fi, err := os.Open(url)
 	if err != nil {
 		return
 	}
@@ -199,65 +173,3 @@ func imageToRGBA(src image.Image) *image.RGBA {
 	draw.Draw(dst, dst.Rect, src, image.ZP, draw.Src)
 	return dst
 }
-
-type ColorPalette struct {
-	colorsNameLookupMap map[string]string
-	colorsHexString     []string
-	colorsRGB           []color.NRGBA
-}
-
-func FromNameMap(nameToHex map[string]string) (cp *ColorPalette, err error) {
-	cp = new(ColorPalette)
-	cp.colorsNameLookupMap = make(map[string]string)
-	for name := range nameToHex {
-		cp.colorsNameLookupMap[nameToHex[name]] = name
-	}
-	return
-}
-
-func ClosestColor(r, g, b uint8) (rc, gc, bc uint) {
-	return
-}
-
-var html = `
-{{ range .}}
-
-<div class="card p1" style="margin-top: 2em;">
-	<div class="card-body">
-		<div class="row">
-			<div class="col">
-				<h2  class="display-4">{{.Name}}</h2>
-			</div>
-		</div>
-		<div class='row'>
-			<div class='col-sm-12 col-md-6'><img class="lazy" data-src="{{.Path}}" width="100%"></div>
-		</div>
-		<div class='row p1'>
-			<div class='col p0'><img class="lazy" data-src="{{.Path}}.1.png" width=100% height=120px></div>
-			<div class='col p0'><img class="lazy" data-src="{{.Path}}.2.png" width=100% height=120px></div>
-			<div class='col p0'><img class="lazy" data-src="{{.Path}}.3.png" width=100% height=120px></div>
-			<div class='col p0'>
-				<div style="float:left;width:100%;height:120px;background:#ffffff;"></div>
-			</div>
-			<div class='col p0'>
-				<div style="float:left;width:100%;height:120px;background:#ffffff;"></div>
-			</div>
-
-		</div>
-		<div class='row p1'>
-			{{ range .Hexes}}
-			<div class='col p0'>
-				<div style="height:120px;background:{{.}};"></div>
-			</div>
-			{{ end}}
-		</div>
-		<div class='row p1'>
-		{{ range .Hexes}}
-			<div class='col text-center'><code style="color:#000000">{{.}}</code></div>
-			{{ end}}
-		</div>
-
-	</div>
-</div>
-
-{{ end }}`

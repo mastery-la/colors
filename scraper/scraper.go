@@ -1,11 +1,39 @@
 package scraper
 
 import (
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/schollz/pluck/pluck"
 )
+
+type Scraper struct {
+	Name          string
+	PaintType     string
+	Brand         string
+	InputFile     string
+	ExtractedURLs []string
+	Results       []PaintSKU
+}
+
+func New(name string, paintType string, brand string, inputFile string) (*Scraper, error) {
+	s := new(Scraper)
+
+	newpath := filepath.Join(".", inputFile)
+	_, err := os.Stat(newpath)
+	if err != nil {
+		return nil, err
+	}
+
+	s.Name = name
+	s.PaintType = paintType
+	s.Brand = brand
+	s.InputFile = inputFile
+
+	return s, nil
+}
 
 // PaintSKU holds information about a unique SKU of paint
 // PaintSKUs include the form-factor that the paint is being sold.
@@ -17,18 +45,15 @@ type PaintSKU struct {
 	ColorSwatchURL string
 }
 
-// ExtractPaintSKUs takes a path to an html file from dickblick.com and returns
+// Extract takes a path to an html file from dickblick.com and returns
 // an array of PaintSKUs that were extracted by crawling the product links.
-func ExtractPaintSKUs(fromFile string) []PaintSKU {
-	urls := extractProductURLs(fromFile)
-	skus := skusFromProductLinks(urls)
-	skus = removeDuplicates(skus)
-	skus = sortAlpha(skus)
-
-	return skus
+func (s *Scraper) Scrape() {
+	s.extractProductURLs()
+	s.fetchSKUs()
+	s.sortAndDedupSKUs()
 }
 
-func extractProductURLs(fromFile string) []string {
+func (s *Scraper) extractProductURLs() {
 	p, _ := pluck.New()
 
 	p.Add(pluck.Config{
@@ -37,7 +62,7 @@ func extractProductURLs(fromFile string) []string {
 		Limit:       -1,
 	})
 
-	p.PluckFile(fromFile)
+	p.PluckFile(s.InputFile)
 
 	result := p.Result()
 	paths := result["0"].([]string)
@@ -48,23 +73,31 @@ func extractProductURLs(fromFile string) []string {
 		return baseURL + path
 	})
 
-	return urls
-
+	s.ExtractedURLs = urls
 }
 
-func skusFromProductLinks(urls []string) []PaintSKU {
+func (s *Scraper) fetchSKUs() {
 	c := make(chan PaintSKU, 100)
 	var skus []PaintSKU
 
-	for _, url := range urls {
+	for _, url := range s.ExtractedURLs {
 		go fetchSKU(c, url)
 	}
 
-	for range urls {
+	for range s.ExtractedURLs {
 		skus = append(skus, <-c)
 	}
 
-	return skus
+	s.Results = skus
+}
+
+func (s *Scraper) sortAndDedupSKUs() {
+	skus := s.Results
+
+	skus = sortAlpha(skus)
+	skus = removeDuplicates(skus)
+
+	s.Results = skus
 }
 
 func fetchSKU(skus chan<- PaintSKU, url string) {
