@@ -1,4 +1,4 @@
-package generator
+package paintcolors
 
 import (
 	"fmt"
@@ -12,14 +12,13 @@ import (
 	"path/filepath"
 
 	"github.com/go-playground/colors"
-	"github.com/mastery-la/colors/downloader"
-	"github.com/mastery-la/colors/scraper"
+
 	"github.com/oliamb/cutter"
 )
 
 type Generator struct {
-	Scraper    *scraper.Scraper
-	Downloader *downloader.Downloader
+	Scraper    *Scraper
+	Downloader *Downloader
 	Result     Palette
 }
 
@@ -42,7 +41,7 @@ type Color struct {
 	SwatchURL string
 }
 
-func New(scraper *scraper.Scraper, downloader *downloader.Downloader) *Generator {
+func NewGenerator(scraper *Scraper, downloader *Downloader) *Generator {
 	g := new(Generator)
 
 	g.Scraper = scraper
@@ -64,7 +63,7 @@ func (g *Generator) Generate() {
 	g.Result = *p
 }
 
-func generatePaints(skus []scraper.PaintSKU, directory string) []Paint {
+func generatePaints(skus []PaintSKU, directory string) []Paint {
 	var hexString string
 	var err error
 	var paints []Paint

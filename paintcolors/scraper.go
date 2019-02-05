@@ -1,4 +1,4 @@
-package scraper
+package paintcolors
 
 import (
 	"os"
@@ -18,7 +18,7 @@ type Scraper struct {
 	Results       []PaintSKU
 }
 
-func New(name string, paintType string, brand string, inputFile string) (*Scraper, error) {
+func NewScraper(name string, paintType string, brand string, inputFile string) (*Scraper, error) {
 	s := new(Scraper)
 
 	newpath := filepath.Join(".", inputFile)

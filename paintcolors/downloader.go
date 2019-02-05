@@ -1,4 +1,4 @@
-package downloader
+package paintcolors
 
 import (
 	"io"
@@ -6,20 +6,18 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-
-	"github.com/mastery-la/colors/scraper"
 )
 
 // Downloader holds neccessary information to use throughout downloading
 type Downloader struct {
-	Scraper         *scraper.Scraper
+	Scraper         *Scraper
 	OutputFolder    string
 	Results         []string
 	downloadChannel chan string
 }
 
 // New creates a new instance of Downloader
-func New(scraper *scraper.Scraper, outputFolder string) (*Downloader, error) {
+func NewDownloader(scraper *Scraper, outputFolder string) (*Downloader, error) {
 	d := new(Downloader)
 
 	newpath := filepath.Join(".", outputFolder)
@@ -46,7 +44,7 @@ func (d *Downloader) Download() {
 }
 
 // SaveImage downloads the image from the given URL and saves to file
-func (d *Downloader) SaveImage(fromSKU scraper.PaintSKU) {
+func (d *Downloader) SaveImage(fromSKU PaintSKU) {
 	path := filepath.Join(d.OutputFolder, fromSKU.Slug+".jpg")
 	img, err := os.Create(path)
 	if err != nil {
