@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	paint "github.com/mastery-la/colors/paintcolors"
+	paint "github.com/mastery-la/colors/colors"
 )
 
 func main() {

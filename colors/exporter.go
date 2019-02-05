@@ -1,4 +1,4 @@
-package paintcolors
+package colors
 
 type Exporter struct {
 }

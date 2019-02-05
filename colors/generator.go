@@ -1,4 +1,4 @@
-package paintcolors
+package colors
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/go-playground/colors"
+	c "github.com/go-playground/colors"
 
 	"github.com/oliamb/cutter"
 )
@@ -130,7 +130,7 @@ func crop(inPath string, outPath string, tlPoint image.Point) (hexString string,
 
 	err = png.Encode(fo, cImg)
 	cnrgba, err := averageColorFromImage(outPath)
-	rgb, err := colors.RGB(cnrgba.R, cnrgba.G, cnrgba.B)
+	rgb, err := c.RGB(cnrgba.R, cnrgba.G, cnrgba.B)
 	if err != nil {
 		return
 	}
