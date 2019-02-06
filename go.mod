@@ -2,6 +2,8 @@ module github.com/mastery-la/colors
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
+	github.com/chromedp/cdproto v0.0.0-20190129070954-8a77a44ac1cb
+	github.com/chromedp/chromedp v0.1.2
 	github.com/go-playground/colors v1.2.0
 	github.com/lucasb-eyer/go-colorful v0.0.0-20181028223441-12d3b2882a08
 	github.com/oliamb/cutter v0.2.2

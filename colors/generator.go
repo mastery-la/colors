@@ -23,22 +23,22 @@ type Generator struct {
 }
 
 type Palette struct {
-	Name      string
-	PaintType string
-	Brand     string
-	Paints    []Paint
+	Name      string  `json:"Name"`
+	PaintType string  `json:"type"`
+	Brand     string  `json:"brand"`
+	Paints    []Paint `json:"paints"`
 }
 
 type Paint struct {
-	Name      string
-	Slug      string
-	SwatchURL string
-	Colors    []Color
+	Name      string  `json:"name"`
+	Slug      string  `json:"slug"`
+	SwatchURL string  `json:"swatch"`
+	Colors    []Color `json:"colors"`
 }
 
 type Color struct {
-	Hex       string
-	SwatchURL string
+	Hex       string `json:"hex"`
+	SwatchURL string `json:"swatch"`
 }
 
 func NewGenerator(scraper *Scraper, downloader *Downloader) *Generator {

@@ -1,15 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 
-	paint "github.com/mastery-la/colors/colors"
+	"github.com/mastery-la/colors/colors"
 )
 
 func main() {
 	// Step 1: Scrape dickblick.com for paint SKUs
-	s, err := paint.NewScraper(
+	s, err := colors.NewScraper(
 		"Amsterdam Standard Series Acrylics",
 		"acrylic",
 		"Amsterdam",
@@ -21,23 +22,19 @@ func main() {
 	s.Scrape()
 
 	// Step 2: Download Color Swatches
-	d, err := paint.NewDownloader(s, ".outputs")
+	d, err := colors.NewDownloader(s, "static/images")
 	if err != nil {
 		log.Fatal(err)
 	}
 	d.Download()
 
 	// Step 3: Generate Palette from Paint SKUs and their swatches
-	g := paint.NewGenerator(s, d)
+	g := colors.NewGenerator(s, d)
 	g.Generate()
 
-	for _, paint := range g.Result.Paints {
-		fmt.Println(paint.Name)
-		fmt.Println(paint.SwatchURL)
-		fmt.Println("-------------")
-		for index, color := range paint.Colors {
-			fmt.Printf("%d. (%s) %s\n", index+1, color.Hex, color.SwatchURL)
-		}
-		fmt.Print("\n\n\n")
+	json, err := json.Marshal(g.Result.Paints)
+	if err != nil {
+		log.Fatal(err)
 	}
+	fmt.Println(string(json))
 }

@@ -1,11 +1,16 @@
 package colors
 
 import (
+	"context"
+	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/chromedp"
 	"github.com/schollz/pluck/pluck"
 )
 
@@ -51,6 +56,42 @@ func (s *Scraper) Scrape() {
 	s.extractProductURLs()
 	s.fetchSKUs()
 	s.sortAndDedupSKUs()
+}
+
+func (s *Scraper) getProductsTable() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c, err := chromedp.New(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var nodes []*cdp.Node
+	tasks := chromedp.Tasks{
+		chromedp.Navigate("https://www.dickblick.com/products/amsterdam-standard-series-acrylics/"),
+		chromedp.Nodes("div.ProductSkuTable > table", &nodes, chromedp.NodeVisible),
+	}
+
+	for _, node := range nodes {
+		str := node.NodeValue
+		fmt.Println(str)
+	}
+
+	err = c.Run(ctx, tasks)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = c.Shutdown(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = c.Wait()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (s *Scraper) extractProductURLs() {
